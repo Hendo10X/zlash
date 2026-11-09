@@ -1,10 +1,8 @@
 import { Download, Globe, type LucideIcon, Puzzle, Search } from 'lucide-react-native';
 import { ScrollView, View } from 'react-native';
-import Animated, { FadeInDown } from 'react-native-reanimated';
 
 import { Screen, ScreenHeader, useTabBarClearance } from '@/components/ui/Screen';
 import { AppText } from '@/components/ui/Text';
-import { EaseOut } from '@/constants/motion';
 import { useAppTheme } from '@/hooks/use-app-theme';
 
 const FEATURES: { icon: LucideIcon; title: string; body: string }[] = [
@@ -22,8 +20,7 @@ export default function BrowseScreen() {
     <Screen>
       <ScreenHeader title="Browse" />
       <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: bottom }} showsVerticalScrollIndicator={false}>
-        <Animated.View
-          entering={FadeInDown.duration(320).easing(EaseOut)}
+        <View
           style={{ backgroundColor: colors.surface, borderRadius: 24, padding: 22, overflow: 'hidden' }}>
           <View
             style={{
@@ -61,15 +58,12 @@ export default function BrowseScreen() {
           <AppText variant="callout" className="text-ink-dim" style={{ marginTop: 6 }}>
             Browse and download comics and manga from sources you choose, straight into your Zlash library.
           </AppText>
-        </Animated.View>
+        </View>
 
         <View style={{ marginTop: 12, gap: 8 }}>
           {FEATURES.map(({ icon: Icon, title, body }, i) => (
-            <Animated.View
+            <View
               key={title}
-              entering={FadeInDown.delay(60 + i * 50)
-                .duration(320)
-                .easing(EaseOut)}
               style={{
                 flexDirection: 'row',
                 gap: 14,
@@ -97,7 +91,7 @@ export default function BrowseScreen() {
                   {body}
                 </AppText>
               </View>
-            </Animated.View>
+            </View>
           ))}
         </View>
 

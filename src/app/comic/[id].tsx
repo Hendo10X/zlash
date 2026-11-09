@@ -4,7 +4,6 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { ArrowLeft, CheckCircle2, Circle, FolderPlus, type LucideIcon, Play, RotateCcw, Trash2 } from 'lucide-react-native';
 import { useState } from 'react';
 import { Pressable, ScrollView, StatusBar, View } from 'react-native';
-import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ComicCover } from '@/components/comic-cover/ComicCover';
@@ -12,7 +11,7 @@ import { Button } from '@/components/ui/Button';
 import { IconButton } from '@/components/ui/IconButton';
 import { Sheet } from '@/components/ui/Sheet';
 import { AppText } from '@/components/ui/Text';
-import { EaseOut } from '@/constants/motion';
+import { CollectionPickerSheet } from '@/features/collections/CollectionSheets';
 import { formatFileSize, formatPageCount, formatRelativeDate, readingFraction } from '@/features/library/selectors';
 import { useAppTheme } from '@/hooks/use-app-theme';
 import { useLibraryStore } from '@/stores/library-store';
@@ -25,6 +24,7 @@ export default function ComicDetailsScreen() {
   const comic = useLibraryStore((s) => s.comics.find((c) => c.id === id));
   const setStatus = useLibraryStore((s) => s.setStatus);
   const removeComic = useLibraryStore((s) => s.removeComic);
+  const collectionCount = useLibraryStore((s) => s.collections.filter((c) => c.comicIds.includes(id)).length);
   const { colors, scheme } = useAppTheme();
   const insets = useSafeAreaInsets();
   const [sheet, setSheet] = useState<'remove' | 'collection' | null>(null);
@@ -61,7 +61,7 @@ export default function ComicDetailsScreen() {
       </View>
 
       <ScrollView contentContainerStyle={{ paddingTop: insets.top + 56, paddingBottom: insets.bottom + 40 }} showsVerticalScrollIndicator={false}>
-        <Animated.View entering={FadeInDown.duration(320).easing(EaseOut)} style={{ alignItems: 'center', paddingHorizontal: 32 }}>
+        <View style={{ alignItems: 'center', paddingHorizontal: 32 }}>
           <View
             style={{
               width: 172,
@@ -86,9 +86,9 @@ export default function ComicDetailsScreen() {
           <AppText variant="footnote" className="text-ink-dim" style={{ marginTop: 8 }} tabular>
             {[FORMAT_LABELS[comic.format], formatPageCount(comic.pageCount), formatFileSize(comic.fileSize)].join('  ·  ')}
           </AppText>
-        </Animated.View>
+        </View>
 
-        <Animated.View entering={FadeInDown.delay(60).duration(320).easing(EaseOut)} style={{ paddingHorizontal: 20, marginTop: 24 }}>
+        <View style={{ paddingHorizontal: 20, marginTop: 24 }}>
           {hasStarted && !isCompleted ? (
             <View style={{ marginBottom: 14 }}>
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 }}>
@@ -119,15 +119,21 @@ export default function ComicDetailsScreen() {
               icon={isCompleted ? CheckCircle2 : Circle}
               label={isCompleted ? 'Completed' : 'Mark read'}
               active={isCompleted}
-              onPress={() => setStatus(comic.id, isCompleted ? 'reading' : 'completed')}
+              // Un-marking a comic you never opened puts it back to unread, not
+              // into "Continue reading".
+              onPress={() => setStatus(comic.id, isCompleted ? (hasStarted ? 'reading' : 'unread') : 'completed')}
             />
-            <Action icon={FolderPlus} label="Collection" onPress={() => setSheet('collection')} />
+            <Action
+              icon={FolderPlus}
+              label={collectionCount > 0 ? `In ${collectionCount}` : 'Collection'}
+              active={collectionCount > 0}
+              onPress={() => setSheet('collection')}
+            />
             <Action icon={Trash2} label="Remove" destructive onPress={() => setSheet('remove')} />
           </View>
-        </Animated.View>
+        </View>
 
-        <Animated.View
-          entering={FadeInDown.delay(120).duration(320).easing(EaseOut)}
+        <View
           style={{ marginHorizontal: 20, marginTop: 28, padding: 16, borderRadius: 20, backgroundColor: colors.surface, gap: 12 }}>
           <AppText variant="footnote" weight="semibold" className="text-ink-dim">
             Details
@@ -136,7 +142,7 @@ export default function ComicDetailsScreen() {
           <DetailRow label="Pages" value={comic.pageCount > 0 ? String(comic.pageCount) : '—'} />
           <DetailRow label="Added" value={formatRelativeDate(comic.dateAdded)} />
           {comic.progress?.lastReadAt ? <DetailRow label="Last read" value={formatRelativeDate(comic.progress.lastReadAt)} /> : null}
-        </Animated.View>
+        </View>
       </ScrollView>
 
       {/* Floating back button stays put while the content scrolls under it. */}
@@ -161,22 +167,19 @@ export default function ComicDetailsScreen() {
             size="lg"
             block
             onPress={() => {
+              const comicId = comic.id;
               setSheet(null);
               router.back();
-              removeComic(comic.id);
+              // Delete once the screen has slid away, so it doesn't flash
+              // "Comic not found" on the way out.
+              setTimeout(() => removeComic(comicId), 350);
             }}
           />
           <Button label="Cancel" variant="ghost" size="lg" block onPress={() => setSheet(null)} />
         </View>
       </Sheet>
 
-      <Sheet
-        visible={sheet === 'collection'}
-        onClose={() => setSheet(null)}
-        title="Collections"
-        description="Group comics into your own shelves. This is coming in an upcoming release.">
-        <Button label="Got it" variant="secondary" size="lg" block onPress={() => setSheet(null)} />
-      </Sheet>
+      <CollectionPickerSheet visible={sheet === 'collection'} onClose={() => setSheet(null)} comicId={comic.id} />
     </View>
   );
 }

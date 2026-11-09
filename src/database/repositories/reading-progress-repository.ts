@@ -71,3 +71,23 @@ export async function setStatus(comicId: string, status: ReadingStatus): Promise
     Date.now()
   );
 }
+
+/** Writes a progress row exactly as given (used by backup restore, which
+ * must keep the original last-read time rather than stamping "now"). */
+export async function restoreProgress(progress: ReadingProgress): Promise<void> {
+  const db = await getDatabase();
+  await db.runAsync(
+    `INSERT INTO reading_progress (comic_id, current_page, total_pages, last_read_at, status)
+     VALUES (?, ?, ?, ?, ?)
+     ON CONFLICT(comic_id) DO UPDATE SET
+       current_page = excluded.current_page,
+       total_pages = excluded.total_pages,
+       last_read_at = excluded.last_read_at,
+       status = excluded.status;`,
+    progress.comicId,
+    progress.currentPage,
+    progress.totalPages,
+    progress.lastReadAt,
+    progress.status
+  );
+}

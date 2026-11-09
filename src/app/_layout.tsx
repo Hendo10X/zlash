@@ -9,7 +9,6 @@ import {
 } from '@expo-google-fonts/inter';
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
-import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
 import { useEffect } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -44,14 +43,12 @@ export default function RootLayout() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
-        <BottomSheetModalProvider>
-          <Stack screenOptions={{ headerShown: false, animation: 'fade', contentStyle: { backgroundColor: colors.base } }}>
+          <Stack screenOptions={{ headerShown: false, animation: 'none', contentStyle: { backgroundColor: colors.base } }}>
             <Stack.Screen name="(tabs)" />
             <Stack.Screen name="comic/[id]" options={{ animation: 'slide_from_right' }} />
-            <Stack.Screen name="reader/[id]" options={{ animation: 'fade', presentation: 'fullScreenModal' }} />
-            <Stack.Screen name="import" options={{ animation: 'slide_from_bottom' }} />
+            <Stack.Screen name="reader/[id]" options={{ animation: 'none', presentation: 'fullScreenModal' }} />
+            <Stack.Screen name="manage" options={{ animation: 'slide_from_right' }} />
           </Stack>
-        </BottomSheetModalProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );

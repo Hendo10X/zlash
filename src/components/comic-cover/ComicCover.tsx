@@ -38,7 +38,7 @@ export function ComicCover({ comic, progress = 0, compact = false, radius = 12 }
           source={{ uri: comic.coverPath }}
           style={{ flex: 1 }}
           contentFit="cover"
-          transition={180}
+          transition={0}
           recyclingKey={comic.id}
         />
       ) : (

@@ -111,11 +111,20 @@ Still open:
   no DB column yet).
 - JSZip still loads the whole CBZ into memory while it's open.
 
-## Phase 5 — Library management ⏳ not started
+## Phase 5 — Library management ✅ first version
 
-Collections have a repository (`collections-repository.ts`) but no UI.
-Storage management and "manage imported comics" are stub rows in Settings
-that show a "coming soon" alert.
+- **Collections.** The library shows a chip row (All · your collections · New).
+  Tap a chip to filter, long-press it to rename or delete. On a comic's details
+  screen, *Collection* opens a picker where you can tick any number of
+  collections or create one inline. Deleting a collection never deletes comics.
+- **Manage comics** (Settings → Storage): every comic sorted by size, with
+  multi-select and bulk remove.
+- **Backup & restore** (Settings → Storage): saves reading progress,
+  collections and settings as JSON to a folder you pick. Restoring matches
+  comics by file hash, so it works on a new device once the same files are
+  imported. Comic files themselves are not included.
+- **Import a folder**, alongside picking files: scans a folder and up to 3
+  levels of subfolders for CBZ/CBR/PDF.
 
 ## Phase 6 — Polish 🟡 first pass
 
@@ -151,12 +160,24 @@ Fixes from the first round of on-device testing:
   (0.23, 1, 0.32, 1) for enters and presses, and a sheet curve for long
   travel.
 
-Not verified on a device yet beyond the JS bundle building.
+Second pass (after the first on-device test):
+- **Import is now a half-height drawer** opened from the + button (and from
+  the empty library), not a full-screen page. The `/import` route is gone.
+- **`Sheet` was rewritten** on RN `Modal` + Reanimated instead of gorhom's
+  portal-based `BottomSheetModal`, so taps inside sheets always register.
+  Drag the handle down, tap the backdrop, or press back to close. Sheets lift
+  above the keyboard.
+- **Intro fade-ins removed** (comic details, Browse, empty states, cover
+  images, default stack transition). Pushes still slide; reader controls
+  still fade when toggled.
+- Settings' dead GitHub / Report-a-bug rows were removed (the URL was a
+  placeholder). Remove now deletes after the details screen has slid away.
+  Un-marking a never-opened comic sets it back to unread.
 
 ## Phase 7 — Public release ⏳ not started
 
-No custom app icon/splash artwork yet (still Expo's placeholder images —
-only the background colors were updated to match the palette). No license
+The lightning-Z app icon and EAS build profiles are in (a preview APK has
+been installed and tested on a device). No license
 has been chosen (§16). `app.json`'s Android package is a placeholder
 (`dev.zlash.app`) — update it to your real reverse-domain before building a
 release APK.

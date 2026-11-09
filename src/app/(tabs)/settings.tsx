@@ -1,6 +1,6 @@
 import Constants from 'expo-constants';
 import { Image } from 'expo-image';
-import { useFocusEffect } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import {
   AlignLeft,
   Archive,
@@ -8,12 +8,11 @@ import {
   ArrowRightToLine,
   BookOpenCheck,
   Columns2,
-  ExternalLink,
+  Download,
   GalleryVertical,
   HardDrive,
   Info,
   Maximize2,
-  MessageSquareWarning,
   Monitor,
   Moon,
   MoveHorizontal,
@@ -24,12 +23,13 @@ import {
   ScanLine,
   ScrollText,
   ShieldCheck,
+  Upload,
   Sun,
   Trash2,
   Eye,
 } from 'lucide-react-native';
 import { useCallback, useState } from 'react';
-import { Linking, ScrollView, View } from 'react-native';
+import { ActivityIndicator, ScrollView, View } from 'react-native';
 
 import { Button } from '@/components/ui/Button';
 import { Screen, ScreenHeader, useTabBarClearance } from '@/components/ui/Screen';
@@ -38,13 +38,12 @@ import { SettingsGroup, SettingsRow } from '@/components/ui/SettingsRow';
 import { Sheet } from '@/components/ui/Sheet';
 import { Switch } from '@/components/ui/Switch';
 import { AppText } from '@/components/ui/Text';
+import { type BackupOutcome, exportBackup, importBackup } from '@/features/backup/backup';
 import { formatFileSize } from '@/features/library/selectors';
 import { clearReaderCache, getReaderCacheSize } from '@/features/reader/reader-cache';
 import { useLibraryStore } from '@/stores/library-store';
 import { useSettingsStore } from '@/stores/settings-store';
 import type { Appearance, PageFit, ReadingDirection, ReadingMode } from '@/types/reading';
-
-const GITHUB_URL = 'https://github.com/zlash-app/zlash'; // placeholder — update once the repo is public
 
 const APPEARANCE: SelectOption<Appearance>[] = [
   { value: 'system', label: 'System', description: 'Match your device setting', icon: Monitor },
@@ -69,7 +68,7 @@ const FIT: SelectOption<PageFit>[] = [
 
 const labelOf = <T extends string>(options: SelectOption<T>[], value: T) => options.find((o) => o.value === value)?.label ?? value;
 
-type SheetKey = 'appearance' | 'direction' | 'mode' | 'fit' | 'clear' | 'about' | 'manage' | 'backup' | null;
+type SheetKey = 'appearance' | 'direction' | 'mode' | 'fit' | 'clear' | 'about' | 'backup' | null;
 
 export default function SettingsScreen() {
   const settings = useSettingsStore();
@@ -77,7 +76,21 @@ export default function SettingsScreen() {
   const bottom = useTabBarClearance();
   const [sheet, setSheet] = useState<SheetKey>(null);
   const [cacheSize, setCacheSize] = useState(0);
-  const close = () => setSheet(null);
+  const [backupBusy, setBackupBusy] = useState(false);
+  const [backupResult, setBackupResult] = useState<BackupOutcome | null>(null);
+  const close = () => {
+    if (backupBusy) return;
+    setSheet(null);
+    setTimeout(() => setBackupResult(null), 260);
+  };
+
+  const runBackup = async (action: () => Promise<BackupOutcome>) => {
+    setBackupBusy(true);
+    setBackupResult(null);
+    const outcome = await action();
+    setBackupBusy(false);
+    if (outcome.status !== 'cancelled') setBackupResult(outcome);
+  };
 
   const totalStorage = comics.reduce((sum, c) => sum + c.fileSize, 0);
   const version = Constants.expoConfig?.version ?? '1.0.0';
@@ -141,19 +154,12 @@ export default function SettingsScreen() {
           <SettingsRow icon={HardDrive} label="Comics" value={formatFileSize(totalStorage)} />
           <SettingsRow icon={Archive} label="Reader cache" value={formatFileSize(cacheSize)} />
           <SettingsRow icon={Trash2} label="Clear cache" destructive onPress={() => setSheet('clear')} />
-          <SettingsRow icon={ScrollText} label="Manage comics" showChevron onPress={() => setSheet('manage')} />
+          <SettingsRow icon={ScrollText} label="Manage comics" showChevron onPress={() => router.push('/manage')} />
           <SettingsRow icon={ShieldCheck} label="Backup & restore" showChevron onPress={() => setSheet('backup')} />
         </SettingsGroup>
 
         <SettingsGroup title="About">
           <SettingsRow icon={Info} label="About Zlash" value={`v${version}`} showChevron onPress={() => setSheet('about')} />
-          <SettingsRow icon={ExternalLink} label="GitHub" showChevron onPress={() => Linking.openURL(GITHUB_URL)} />
-          <SettingsRow
-            icon={MessageSquareWarning}
-            label="Report a bug"
-            showChevron
-            onPress={() => Linking.openURL(`${GITHUB_URL}/issues/new`)}
-          />
         </SettingsGroup>
       </ScrollView>
 
@@ -212,8 +218,38 @@ export default function SettingsScreen() {
         </View>
       </Sheet>
 
-      <ComingSoonSheet visible={sheet === 'manage'} onClose={close} title="Manage comics" body="Bulk select, delete and see storage per comic." />
-      <ComingSoonSheet visible={sheet === 'backup'} onClose={close} title="Backup & restore" body="Export your library and reading progress, and bring it to a new device." />
+      <Sheet
+        visible={sheet === 'backup'}
+        onClose={close}
+        dismissible={!backupBusy}
+        title="Backup & restore"
+        description="Saves your reading progress, collections and settings to a small file. Comic files aren’t included — on a new device, import the same comics first, then restore.">
+        <View style={{ gap: 8 }}>
+          {backupResult && backupResult.status !== 'cancelled' ? (
+            <View
+              style={{
+                padding: 14,
+                borderRadius: 16,
+                marginBottom: 4,
+                backgroundColor: backupResult.status === 'done' ? 'rgba(34, 197, 94, 0.12)' : 'rgba(239, 68, 68, 0.12)',
+              }}>
+              <AppText variant="footnote" weight="medium" style={{ color: backupResult.status === 'done' ? '#16a34a' : '#ef4444' }}>
+                {backupResult.message}
+              </AppText>
+            </View>
+          ) : null}
+          {backupBusy ? (
+            <View style={{ height: 112, alignItems: 'center', justifyContent: 'center' }}>
+              <ActivityIndicator />
+            </View>
+          ) : (
+            <>
+              <Button label="Save a backup" icon={Upload} variant="accent" size="lg" block onPress={() => runBackup(exportBackup)} />
+              <Button label="Restore from a backup" icon={Download} variant="secondary" size="lg" block onPress={() => runBackup(importBackup)} />
+            </>
+          )}
+        </View>
+      </Sheet>
 
       <Sheet visible={sheet === 'about'} onClose={close}>
         <View style={{ alignItems: 'center', paddingTop: 8 }}>
@@ -231,13 +267,5 @@ export default function SettingsScreen() {
         </View>
       </Sheet>
     </Screen>
-  );
-}
-
-function ComingSoonSheet({ visible, onClose, title, body }: { visible: boolean; onClose: () => void; title: string; body: string }) {
-  return (
-    <Sheet visible={visible} onClose={onClose} title={title} description={`${body} This is coming in an upcoming release.`}>
-      <Button label="Got it" variant="secondary" size="lg" block onPress={onClose} />
-    </Sheet>
   );
 }

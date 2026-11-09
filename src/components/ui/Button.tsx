@@ -34,7 +34,7 @@ export function Button({
   const palette = {
     primary: { bg: colors.ink, fg: colors.base },
     accent: { bg: colors.accent, fg: colors.accentInk },
-    secondary: { bg: colors.elevated, fg: colors.ink },
+    secondary: { bg: colors.line, fg: colors.ink },
     ghost: { bg: 'transparent', fg: colors.ink },
     destructive: { bg: 'rgba(239, 68, 68, 0.12)', fg: '#ef4444' },
   }[variant];
