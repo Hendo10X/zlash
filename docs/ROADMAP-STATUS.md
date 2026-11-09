@@ -98,7 +98,7 @@ reading plus the 3 most recently read others, and deletes older ones when a
 comic opens. Deleting a comic also clears its cache. Settings → Storage now
 shows the real "Reader cache" size, and "Clear cache" really clears it.
 
-Still open:
+Still open (most of this list was resolved later, see "Phase 4 follow-up" below):
 - **PDF rendering.** This needs a native PDF renderer, and choosing one is a
   dependency decision that hasn't been made. PDFs currently open to a clear
   "can't be displayed yet" screen instead of placeholder pages.
@@ -174,10 +174,58 @@ Second pass (after the first on-device test):
   placeholder). Remove now deletes after the details screen has slid away.
   Un-marking a never-opened comic sets it back to unread.
 
-## Phase 7 — Public release ⏳ not started
+## Phase 4 follow-up — PDF, CBR, per-comic preferences ✅
 
-The lightning-Z app icon and EAS build profiles are in (a preview APK has
-been installed and tested on a device). No license
-has been chosen (§16). `app.json`'s Android package is a placeholder
-(`dev.zlash.app`) — update it to your real reverse-domain before building a
-release APK.
+- **`modules/zlash-native`** is a local Expo module (Android, Kotlin), so
+  nothing here depends on a third-party RN library:
+  - PDF: Android's built-in `PdfRenderer` renders pages to JPEG at screen
+    resolution into the reader cache. It also gives the real page count and
+    renders the cover at import.
+  - CBR: `junrar` lists and extracts entries. RAR5 archives aren't supported
+    by any JVM library and fail with a clear "re-pack as CBZ" message.
+  - JS loads it with `requireOptionalNativeModule`, so older builds, iOS and
+    Expo Go show "needs the latest build" instead of crashing.
+- **Files are identified by their bytes** (`services/archive/sniff.ts`): a
+  ".cbr" that is really a ZIP is read in JS like a CBZ.
+- **Backfill.** On startup, comics imported before this (CBR/PDF with no
+  cover or a page count of 0) get covers and page counts filled in, in the
+  background.
+- **Per-comic reader preferences.** Migration 002 adds `reading_direction`,
+  `reading_mode` and `page_fit` to `comics`. Changing them in the reader saves
+  them for that comic; unset values fall back to the Settings defaults.
+- The reader screen is now a generic `features/reader/ReaderView.tsx` over
+  any `PageSource`. Local comics and streamed comics share it.
+
+## Browse — OPDS servers ✅ first version
+
+- Add a server in Browse (URL, optional username/password). Saving fetches
+  the catalog first, so bad addresses are caught right away. Server rows live
+  in SQLite (`sources`, migration 002); passwords live in the OS keystore
+  (expo-secure-store).
+- `services/opds/opds.ts` handles OPDS 1.x Atom feeds: navigation, paging
+  (`rel="next"`), OpenSearch search, acquisition links, covers/thumbnails,
+  and the **Page Streaming Extension**. Relative URLs are resolved by hand
+  (RN's URL polyfill doesn't do relative resolution). Login is HTTP Basic.
+- **Read online** (`app/stream.tsx`): pages download one at a time from the
+  PSE template into the reader cache, so streamed comics get the full
+  reader. Progress is kept per stream in MMKV, and Browse shows
+  "Continue reading online".
+- **Download to library**: picks the best CBZ/CBR/PDF acquisition link,
+  downloads it with the server login, and runs the normal import pipeline
+  (dedupe, cover, page count).
+- Tested against the OPDS spec only, not yet against live Komga/Kavita
+  servers.
+
+Not yet: OPDS 2.0 (JSON) feeds, marking progress back on the server,
+batch-downloading a whole series, Kavita's API-key login beyond putting the
+key in the URL (which is how Kavita's OPDS URL already works).
+
+## Phase 7 — Public release 🟡
+
+- License: **GPL-3.0** (`LICENSE`).
+- Android package: `dev.zlash.app` (kept on purpose).
+- Lightning-Z icon and EAS profiles are in. A preview APK has been tested on
+  a device.
+- Still to do: store listing, screenshots, privacy policy (needed for the
+  Play Store, even though Zlash collects nothing), and a public repo URL for
+  the About screen.

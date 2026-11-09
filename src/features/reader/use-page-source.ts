@@ -2,6 +2,9 @@ import { File } from 'expo-file-system';
 import { useEffect, useState } from 'react';
 
 import { openCbzPageSource } from '@/services/archive/cbz-page-source';
+import { openRarPageSource } from '@/services/archive/rar';
+import { sniffArchive } from '@/services/archive/sniff';
+import { openPdfPageSource } from '@/services/pdf/pdf-page-source';
 import { type PageSource, PageSourceClosedError } from '@/services/reader/page-source';
 import type { Comic } from '@/types/comic';
 
@@ -13,10 +16,20 @@ export type PageSourceState =
   | { status: 'unsupported'; message: string }
   | { status: 'error'; message: string };
 
-const UNSUPPORTED: Partial<Record<Comic['format'], string>> = {
-  pdf: 'PDF pages can’t be displayed yet — PDF rendering needs a native renderer that hasn’t been added.',
-  cbr: 'CBR pages can’t be displayed yet — RAR extraction needs a vetted library that hasn’t been picked.',
-};
+/** Picks the reader for a library file by its actual bytes. */
+async function openLocalPageSource(comicId: string, format: Comic['format'], file: File): Promise<PageSource> {
+  const kind = format === 'pdf' ? 'pdf' : await sniffArchive(file);
+  switch (kind) {
+    case 'zip':
+      return openCbzPageSource(comicId, file);
+    case 'rar':
+      return openRarPageSource(comicId, file);
+    case 'pdf':
+      return openPdfPageSource(comicId, file);
+    default:
+      throw new Error('This file isn’t a comic archive Zlash can read.');
+  }
+}
 
 /** Opens the comic's file for reading for as long as the reader is mounted. */
 export function usePageSource(comic: Pick<Comic, 'id' | 'format' | 'filePath'> | undefined): PageSourceState {
@@ -24,14 +37,13 @@ export function usePageSource(comic: Pick<Comic, 'id' | 'format' | 'filePath'> |
   const format = comic?.format;
   const filePath = comic?.filePath;
   const key = `${comicId}:${filePath}`;
-  const unsupported = format ? UNSUPPORTED[format] : undefined;
 
   // Tagged with the comic it belongs to, so switching comics reads as
   // "loading" immediately instead of briefly showing the previous source.
   const [result, setResult] = useState<{ key: string; state: PageSourceState } | null>(null);
 
   useEffect(() => {
-    if (!comicId || !format || !filePath || UNSUPPORTED[format]) return;
+    if (!comicId || !format || !filePath) return;
 
     let cancelled = false;
     let opened: PageSource | undefined;
@@ -42,7 +54,7 @@ export function usePageSource(comic: Pick<Comic, 'id' | 'format' | 'filePath'> |
         const file = new File(filePath);
         if (!file.exists) throw new Error('The comic file is missing from your library storage.');
         pruneReaderCache(comicId);
-        const source = await openCbzPageSource(comicId, file);
+        const source = await openLocalPageSource(comicId, format, file);
         if (cancelled) {
           source.close();
           return;
@@ -62,7 +74,6 @@ export function usePageSource(comic: Pick<Comic, 'id' | 'format' | 'filePath'> |
     };
   }, [key, comicId, format, filePath]);
 
-  if (unsupported) return { status: 'unsupported', message: unsupported };
   if (!result || result.key !== key) return { status: 'loading' };
   return result.state;
 }

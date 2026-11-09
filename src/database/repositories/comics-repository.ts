@@ -1,4 +1,4 @@
-import type { Comic } from '@/types/comic';
+import type { Comic, ReaderPreferences } from '@/types/comic';
 
 import { getDatabase } from '../client';
 
@@ -17,6 +17,9 @@ interface ComicRow {
   page_count: number;
   date_added: number;
   updated_at: number;
+  reading_direction: string | null;
+  reading_mode: string | null;
+  page_fit: string | null;
 }
 
 function rowToComic(row: ComicRow): Comic {
@@ -34,6 +37,9 @@ function rowToComic(row: ComicRow): Comic {
     pageCount: row.page_count,
     dateAdded: row.date_added,
     updatedAt: row.updated_at,
+    readingDirection: (row.reading_direction ?? undefined) as Comic['readingDirection'],
+    readingMode: (row.reading_mode ?? undefined) as Comic['readingMode'],
+    pageFit: (row.page_fit ?? undefined) as Comic['pageFit'],
   };
 }
 
@@ -55,7 +61,7 @@ export async function findComicByHash(hash: string): Promise<Comic | null> {
   return row ? rowToComic(row) : null;
 }
 
-export interface InsertComicInput extends Omit<Comic, 'dateAdded' | 'updatedAt'> {
+export interface InsertComicInput extends Omit<Comic, 'dateAdded' | 'updatedAt' | keyof ReaderPreferences> {
   fileHash: string;
 }
 
@@ -87,4 +93,28 @@ export async function insertComic(input: InsertComicInput): Promise<void> {
 export async function deleteComic(id: string): Promise<void> {
   const db = await getDatabase();
   await db.runAsync('DELETE FROM comics WHERE id = ?;', id);
+}
+
+export async function setReaderPreferences(id: string, prefs: ReaderPreferences): Promise<void> {
+  const db = await getDatabase();
+  await db.runAsync(
+    'UPDATE comics SET reading_direction = ?, reading_mode = ?, page_fit = ? WHERE id = ?;',
+    prefs.readingDirection,
+    prefs.readingMode,
+    prefs.pageFit,
+    id
+  );
+}
+
+/** Fills in metadata learned after import (e.g. CBR/PDF covers once the
+ * native readers are available). */
+export async function updateComicMetadata(id: string, patch: { pageCount: number; coverPath?: string }): Promise<void> {
+  const db = await getDatabase();
+  await db.runAsync(
+    'UPDATE comics SET page_count = ?, cover_path = COALESCE(?, cover_path), updated_at = ? WHERE id = ?;',
+    patch.pageCount,
+    patch.coverPath ?? null,
+    Date.now(),
+    id
+  );
 }

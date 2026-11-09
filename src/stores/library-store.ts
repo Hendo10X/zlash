@@ -10,7 +10,7 @@ import {
   renameCollection as persistRenameCollection,
   touchCollection,
 } from '@/database/repositories/collections-repository';
-import { deleteComic, getAllComics } from '@/database/repositories/comics-repository';
+import { deleteComic, getAllComics, setReaderPreferences as persistReaderPreferences } from '@/database/repositories/comics-repository';
 import {
   getAllProgress,
   saveProgress,
@@ -19,7 +19,7 @@ import {
 import { clearComicReaderCache } from '@/features/reader/reader-cache';
 import { comicDirectory } from '@/services/file-system/paths';
 import type { Collection } from '@/types/collection';
-import type { LibraryComic } from '@/types/comic';
+import type { LibraryComic, ReaderPreferences } from '@/types/comic';
 import type { LibrarySortKey, ReadingStatus } from '@/types/reading';
 import { generateId } from '@/utils/id';
 import { toneForId } from '@/utils/tone-for-id';
@@ -41,6 +41,7 @@ interface LibraryState {
   setStatus: (comicId: string, status: ReadingStatus) => void;
   removeComic: (comicId: string) => Promise<void>;
   removeComics: (comicIds: string[]) => Promise<void>;
+  setReaderPreferences: (comicId: string, prefs: ReaderPreferences) => void;
 
   createCollection: (name: string) => Promise<string>;
   renameCollection: (id: string, name: string) => Promise<void>;
@@ -140,6 +141,11 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
       } catch {}
       deleteComicFiles(comic);
     }
+  },
+
+  setReaderPreferences: (comicId, prefs) => {
+    set((state) => ({ comics: state.comics.map((c) => (c.id === comicId ? { ...c, ...prefs } : c)) }));
+    persistReaderPreferences(comicId, prefs).catch(() => {});
   },
 
   createCollection: async (name) => {

@@ -1,0 +1,22 @@
+plugins {
+  id 'com.android.library'
+  id 'expo-module-gradle-plugin'
+}
+
+group = 'expo.modules.zlashnative'
+version = '0.1.0'
+
+android {
+  namespace "expo.modules.zlashnative"
+  defaultConfig {
+    versionCode 1
+    versionName "0.1.0"
+  }
+}
+
+dependencies {
+  // RAR (CBR) reading. Pure Java; supports RAR 1.5–4.x archives. RAR5 is
+  // not supported by any permissively-usable JVM library — reported as a
+  // clear error instead.
+  implementation 'com.github.junrar:junrar:7.5.5'
+}

@@ -1,4 +1,4 @@
-import type { ReadingDirection, ReadingStatus } from './reading';
+import type { PageFit, ReadingDirection, ReadingMode, ReadingStatus } from './reading';
 
 /** Mirrors the `comics` SQLite table — see `src/database/schema.ts`. */
 export interface Comic {
@@ -15,6 +15,10 @@ export interface Comic {
   pageCount: number;
   dateAdded: number;
   updatedAt: number;
+  /** Per-comic reader overrides; undefined = use the Settings default. */
+  readingDirection?: ReadingDirection;
+  readingMode?: ReadingMode;
+  pageFit?: PageFit;
 }
 
 /** Mirrors the `reading_progress` SQLite table. */
@@ -36,5 +40,6 @@ export interface LibraryComic extends Comic {
 
 export interface ReaderPreferences {
   readingDirection: ReadingDirection;
-  readingMode: 'single' | 'double' | 'vertical';
+  readingMode: ReadingMode;
+  pageFit: PageFit;
 }
