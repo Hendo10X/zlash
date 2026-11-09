@@ -11,9 +11,10 @@ interface SearchFieldProps {
   onChangeText: (text: string) => void;
   onClose: () => void;
   placeholder?: string;
+  onSubmit?: (text: string) => void;
 }
 
-export function SearchField({ value, onChangeText, onClose, placeholder }: SearchFieldProps) {
+export function SearchField({ value, onChangeText, onClose, placeholder, onSubmit }: SearchFieldProps) {
   const { colors } = useAppTheme();
 
   return (
@@ -40,6 +41,7 @@ export function SearchField({ value, onChangeText, onClose, placeholder }: Searc
           placeholderTextColor={colors.inkFaint}
           selectionColor={colors.accent}
           returnKeyType="search"
+          onSubmitEditing={(e) => onSubmit?.(e.nativeEvent.text)}
           style={{ flex: 1, fontFamily: FontWeights.regular, fontSize: 15, color: colors.ink, paddingVertical: 0 }}
         />
         <Pressable

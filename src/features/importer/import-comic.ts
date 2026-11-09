@@ -2,10 +2,13 @@ import { File } from 'expo-file-system';
 
 import { findComicByHash, getComicById, insertComic } from '@/database/repositories/comics-repository';
 import { extractCbzCover } from '@/services/archive/cbz';
+import { extractRarEntry, listRarPages, rarEntryExtension } from '@/services/archive/rar';
+import { sniffArchive } from '@/services/archive/sniff';
 import { comicDirectory, comicFile, coverFile, ensureStorageDirectories } from '@/services/file-system/paths';
 import { detectFormat } from '@/services/metadata/format';
 import { titleFromFilename } from '@/services/metadata/title';
 import { estimatePdfPageCount } from '@/services/pdf/page-count';
+import { pdfPageCount, renderPdfPage } from '@/services/pdf/pdf-page-source';
 import type { Comic } from '@/types/comic';
 import { generateId } from '@/utils/id';
 
@@ -64,21 +67,42 @@ export async function importComicFile(picked: PickedFile): Promise<ImportResult>
   let coverPath: string | undefined;
 
   try {
-    if (format === 'cbz') {
+    // Trust the bytes, not the extension: plenty of ".cbr" files are ZIPs.
+    const kind = format === 'pdf' ? 'pdf' : await sniffArchive(destFile);
+
+    if (kind === 'zip') {
       const extracted = await extractCbzCover(destFile);
       const cover = coverFile(id, extracted.extension);
       await cover.write(extracted.bytes);
       pageCount = extracted.pageCount;
       coverPath = cover.uri;
-    } else if (format === 'pdf') {
-      pageCount = await estimatePdfPageCount(destFile);
+    } else if (kind === 'rar') {
+      const pages = await listRarPages(destFile);
+      if (pages.length === 0) throw new Error('No image pages found in archive');
+      const cover = coverFile(id, rarEntryExtension(pages[0]));
+      await extractRarEntry(destFile, pages[0], cover);
+      pageCount = pages.length;
+      coverPath = cover.uri;
+    } else if (kind === 'pdf') {
+      try {
+        pageCount = await pdfPageCount(destFile);
+        const cover = coverFile(id, 'jpg');
+        await renderPdfPage(destFile, 0, 600, cover);
+        coverPath = cover.uri;
+      } catch {
+        // Older build without the native renderer: keep the import, use the
+        // regex page count and a placeholder cover.
+        pageCount = await estimatePdfPageCount(destFile);
+      }
+    } else {
+      throw new Error('Unrecognised archive');
     }
-    // CBR: page count and cover stay unknown until RAR extraction is
-    // implemented — the file still imports successfully (see
-    // docs/ROADMAP-STATUS.md).
-  } catch {
-    comicDirectory(id).delete();
-    return { status: 'error', filename: picked.name, message: 'Could not read the comic contents' };
+  } catch (e) {
+    try {
+      comicDirectory(id).delete();
+    } catch {}
+    const message = e instanceof Error && /RAR5|latest Zlash build/.test(e.message) ? e.message : 'Could not read the comic contents';
+    return { status: 'error', filename: picked.name, message };
   }
 
   await insertComic({

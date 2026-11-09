@@ -6,15 +6,19 @@ A free, open-source, local-first comic book reader for Android, built with Expo 
 
 ## Status
 
-Phases 1–3 of the project roadmap are done: design system, app architecture, a fully navigable Library/History/Settings experience, and a real import pipeline (Android file picker → copy → hash/dedupe → CBZ/PDF metadata & cover extraction → SQLite). The library is DB-backed end to end — a fresh install starts empty and fills up as you import.
+First feature-complete version:
 
-CBR files import (copied, hashed, deduped) but have no page count or cover yet — RAR extraction needs a vetted library, which hasn't been picked. Phase 4 is in progress. The reader renders real CBZ pages in single (with page-fit options), double-page, and vertical-scroll modes. PDF and CBR rendering are still waiting on native libraries. See [`docs/ROADMAP-STATUS.md`](./docs/ROADMAP-STATUS.md) for the full breakdown.
+- **Library** — import CBZ, CBR and PDF (single files or whole folders), real covers and page counts, collections, search/sort, manage storage, backup & restore.
+- **Reader** — CBZ, CBR (RAR4 and ZIP-based; RAR5 isn't supported) and PDF, in single, double-page and vertical modes. Mode, fit and direction are remembered per comic.
+- **Browse** — connect Komga, Kavita, Calibre-Web, Ubooquity or any OPDS 1.x catalog. Browse and search it, read online page by page where the server supports OPDS-PSE (Komga, Kavita), or download comics into the library.
+
+See [`docs/ROADMAP-STATUS.md`](./docs/ROADMAP-STATUS.md) for details and known limits.
 
 ## Get started
 
 ```bash
 npm install
-npx expo run:android   # native modules (reanimated, sqlite, mmkv, etc.) require a dev build — Expo Go won't work
+npx expo run:android   # needs a dev build — Expo Go lacks Zlash's native modules (modules/zlash-native, sqlite, mmkv…)
 ```
 
 Use `npx expo install <package>` (not `npm install`) when adding any Expo/native dependency, so versions stay matched to the installed SDK.
@@ -24,21 +28,23 @@ Use `npx expo install <package>` (not `npm install`) when adding any Expo/native
 - **Expo SDK 58** + **React Native 0.88** + **React 19**
 - **Expo Router** (file-based routing, `src/app/`)
 - **Uniwind** (Tailwind CSS v4 bindings for React Native) for all styling
-- **HeroUI Native** for a handful of complex primitives (e.g. `Switch`)
 - **Reanimated** + **Gesture Handler** for motion and the reader's swipe/pinch interactions
 - **expo-sqlite** for comics/progress/collections, **MMKV** for preferences
 - **Zustand** for app state
+- **`modules/zlash-native`** — a local Expo module (Kotlin): PDF rendering via Android's `PdfRenderer`, RAR extraction via junrar
+- **fast-xml-parser** for OPDS feeds, **expo-secure-store** for server passwords
 
 ## Project layout
 
 ```
 src/
-  app/                 Expo Router screens — (tabs)/, comic/[id], reader/[id], import
+  app/                 Expo Router screens — (tabs)/, comic/[id], reader/[id], manage, source/, stream
   components/          Reusable UI (comic-cover, empty-state, ui/, reader-controls)
-  features/            Feature-local logic (library selectors, sample data, reader helpers)
+  features/            Feature logic — importer, reader, collections, browse, backup
   database/            SQLite schema, migrations, repositories
-  services/            File system / archive / pdf / metadata (scaffolded, Phase 3+)
-  stores/              Zustand stores (library, settings) + MMKV adapter
+  services/            File system, archives (zip/rar), pdf, opds, metadata
+  stores/              Zustand stores (library, settings, sources) + MMKV adapter
+modules/zlash-native/  Local native module (Android)
   hooks/, types/, constants/
 ```
 
@@ -55,4 +61,4 @@ npx expo-doctor          # dependency/config health check
 
 ## License
 
-TBD — evaluate Apache-2.0 vs GPL-3.0 before the first public release (see the product spec, §16).
+[GPL-3.0](./LICENSE). Forks and modified versions must stay open source under the same license.
