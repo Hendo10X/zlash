@@ -48,7 +48,7 @@ function PageImage({
     return (
       <View style={style} className="items-center justify-center gap-2">
         <ImageOff size={22} color={Colors.dark.inkFaint} />
-        <AppText style={{ fontSize: 12, color: Colors.dark.inkFaint }}>Page {index + 1} couldn’t be loaded</AppText>
+        <AppText variant="caption" style={{ color: Colors.dark.inkFaint }}>Page {index + 1} couldn’t be loaded</AppText>
       </View>
     );
   }

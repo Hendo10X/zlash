@@ -18,8 +18,9 @@ export const Colors = {
     inkDim: '#a3a3a3',
     inkFaint: '#737373',
     line: '#303030',
-    accent: '#ff6a3d',
-    accentInk: '#171717',
+    accent: '#22c55e',
+    accentInk: '#052e16',
+    accentSoft: 'rgba(34, 197, 94, 0.14)',
     overlay: 'rgba(10, 10, 10, 0.72)',
   },
   light: {
@@ -30,8 +31,9 @@ export const Colors = {
     inkDim: '#737373',
     inkFaint: '#a19d93',
     line: '#e7e5e0',
-    accent: '#e8572a',
-    accentInk: '#fff8f3',
+    accent: '#16a34a',
+    accentInk: '#ffffff',
+    accentSoft: 'rgba(22, 163, 74, 0.12)',
     overlay: 'rgba(23, 23, 23, 0.55)',
   },
 } as const;
@@ -71,5 +73,16 @@ export const Radius = {
   full: 999,
 } as const;
 
-export const BottomTabBarHeight = 72;
+/** Floating tab bar geometry — see `components/ui/TabBar.tsx`. Screens use
+ * `useTabBarClearance()` rather than these directly, since the real offset
+ * depends on the device's bottom safe-area inset. */
+export const TabBarMetrics = { height: 64, bottomGap: 12 } as const;
+
+/** Shared motion tokens. Ease-out for anything entering or responding to a
+ * touch; short durations so the UI never feels like it's waiting on itself. */
+export const Motion = {
+  fast: 140,
+  base: 220,
+  slow: 320,
+} as const;
 export const MaxContentWidth = 720;

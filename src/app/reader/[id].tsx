@@ -209,14 +209,16 @@ function ReaderMessage({ title, message, children }: { title: string; message?: 
           className="h-9 w-9 items-center justify-center rounded-full bg-white/10 active:opacity-70">
           <ArrowLeft size={18} color={colors.ink} />
         </Pressable>
-        <AppText weight="medium" numberOfLines={1} className="flex-1" style={{ fontSize: 14, color: colors.ink }}>
+        <AppText variant="callout" weight="semibold" numberOfLines={1} style={{ flex: 1, color: colors.ink }}>
           {title}
         </AppText>
       </View>
       <View className="flex-1 items-center justify-center gap-3 px-10">
         {children}
         {message ? (
-          <AppText style={{ fontSize: 14, lineHeight: 20, color: colors.inkDim, textAlign: 'center' }}>{message}</AppText>
+          <AppText variant="callout" style={{ color: colors.inkDim, textAlign: 'center' }}>
+            {message}
+          </AppText>
         ) : null}
       </View>
     </View>

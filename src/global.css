@@ -25,8 +25,9 @@
       --color-ink-dim: #a3a3a3;
       --color-ink-faint: #737373;
       --color-line: #303030;
-      --color-accent: #ff6a3d;
-      --color-accent-ink: #171717;
+      --color-accent: #22c55e;
+      --color-accent-ink: #052e16;
+      --color-accent-soft: rgba(34, 197, 94, 0.14);
       --color-overlay: rgba(10, 10, 10, 0.72);
     }
 
@@ -38,8 +39,9 @@
       --color-ink-dim: #737373;
       --color-ink-faint: #a19d93;
       --color-line: #e7e5e0;
-      --color-accent: #e8572a;
-      --color-accent-ink: #fff8f3;
+      --color-accent: #16a34a;
+      --color-accent-ink: #ffffff;
+      --color-accent-soft: rgba(22, 163, 74, 0.12);
       --color-overlay: rgba(23, 23, 23, 0.55);
     }
   }
