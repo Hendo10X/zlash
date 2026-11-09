@@ -117,7 +117,41 @@ Collections have a repository (`collections-repository.ts`) but no UI.
 Storage management and "manage imported comics" are stub rows in Settings
 that show a "coming soon" alert.
 
-## Phase 6 — Polish ⏳ not started
+## Phase 6 — Polish 🟡 first pass
+
+Fixes from the first round of on-device testing:
+- **Collapsed or overflowing screens and cut-off text.** Screens used
+  `className="flex-1"` on `SafeAreaView`. Uniwind only styles core RN
+  components, so that was silently dropped. Every screen now goes through
+  `components/ui/Screen.tsx`, which does its layout with `style`. `AppText`
+  now has a type scale (`variant`) with an explicit line height on every size,
+  so Android no longer clips glyphs.
+- **Accent is now green** (#22c55e dark / #16a34a light), matching the
+  app icon.
+- **Settings.** Grouped cards (`SettingsGroup`). The segmented toggles became
+  select rows that open a bottom sheet (`SelectSheet`). On/off settings use
+  a custom accent `Switch` (HeroUI's was removed).
+- **One shared `Sheet`** (gorhom bottom-sheet with a 320ms no-overshoot
+  timing curve) is used for every select, confirm, about, and coming-soon
+  dialog in place of `Alert`.
+- **Tab bar.** 4 tabs (Library, Browse, History, Settings). The indicator
+  glides on a 260ms ease-out, with no spring or per-item scaling, and doesn't
+  slide in on first layout. Tab switches have no screen transition. There's a
+  selection haptic on change.
+- **Import button** now sits 16pt above the tab bar, measured from the
+  safe-area inset.
+- **Browse tab** is a "coming soon" screen for plugin-based comic and manga
+  sources.
+- **History and list rows** show the real cover art (not a gradient), with
+  an inline progress bar.
+- **Redesigned** the import, comic details (blurred-cover backdrop), and
+  reader controls (gradient fades, one chip row, green slider, inverted in
+  RTL).
+- **Motion tokens** live in `constants/motion.ts`: ease-out
+  (0.23, 1, 0.32, 1) for enters and presses, and a sheet curve for long
+  travel.
+
+Not verified on a device yet beyond the JS bundle building.
 
 ## Phase 7 — Public release ⏳ not started
 

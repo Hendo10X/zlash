@@ -56,6 +56,7 @@ export function getCompleted(comics: LibraryComic[]): LibraryComic[] {
 
 export function readingFraction(comic: LibraryComic): number {
   if (!comic.progress || comic.progress.totalPages === 0) return 0;
+  if (comic.progress.status === 'completed') return 1;
   return comic.progress.currentPage / comic.progress.totalPages;
 }
 

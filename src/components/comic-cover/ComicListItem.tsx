@@ -1,45 +1,60 @@
-import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
-import { ChevronRight } from 'lucide-react-native';
 import { Pressable, View } from 'react-native';
 
 import { AppText } from '@/components/ui/Text';
+import { readingFraction } from '@/features/library/selectors';
 import { useAppTheme } from '@/hooks/use-app-theme';
 import type { LibraryComic } from '@/types/comic';
+
+import { ComicCover } from './ComicCover';
 
 interface ComicListItemProps {
   comic: LibraryComic;
   subtitle: string;
+  /** Shows a slim progress bar with this label, e.g. "42%". */
   progressLabel?: string;
 }
 
 export function ComicListItem({ comic, subtitle, progressLabel }: ComicListItemProps) {
   const { colors } = useAppTheme();
-  const [from, to] = comic.placeholderTone;
+  const fraction = readingFraction(comic);
 
   return (
     <Pressable
       onPress={() => router.push(`/comic/${comic.id}`)}
-      className="flex-row items-center gap-3 py-2.5 active:opacity-60">
-      <View className="h-[64px] w-[44px] overflow-hidden rounded-[6px] bg-elevated">
-        <LinearGradient colors={[from, to]} style={{ flex: 1 }} />
+      accessibilityRole="button"
+      style={({ pressed }) => ({
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 14,
+        paddingVertical: 10,
+        paddingHorizontal: 10,
+        marginHorizontal: -10,
+        borderRadius: 16,
+        backgroundColor: pressed ? colors.surface : 'transparent',
+      })}>
+      <View style={{ width: 48 }}>
+        <ComicCover comic={comic} compact radius={8} />
       </View>
 
-      <View className="flex-1">
-        <AppText weight="medium" numberOfLines={1} className="text-[15px] text-ink">
+      <View style={{ flex: 1, minWidth: 0 }}>
+        <AppText variant="body" weight="semibold" numberOfLines={1} className="text-ink">
           {comic.title}
         </AppText>
-        <AppText numberOfLines={1} className="mt-0.5 text-[13px] text-ink-dim">
+        <AppText variant="footnote" numberOfLines={1} className="text-ink-dim" style={{ marginTop: 2 }} tabular>
           {subtitle}
         </AppText>
         {progressLabel ? (
-          <AppText weight="medium" className="mt-1 text-[12px] text-accent">
-            {progressLabel}
-          </AppText>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 8 }}>
+            <View style={{ flex: 1, height: 3, borderRadius: 2, backgroundColor: colors.line, overflow: 'hidden' }}>
+              <View style={{ height: '100%', width: `${Math.min(fraction, 1) * 100}%`, backgroundColor: colors.accent }} />
+            </View>
+            <AppText variant="caption" weight="medium" className="text-ink-dim" tabular>
+              {progressLabel}
+            </AppText>
+          </View>
         ) : null}
       </View>
-
-      <ChevronRight size={18} color={colors.inkFaint} />
     </Pressable>
   );
 }

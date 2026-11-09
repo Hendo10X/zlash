@@ -1,16 +1,19 @@
 import * as DocumentPicker from 'expo-document-picker';
 import { router } from 'expo-router';
-import { AlertCircle, CheckCircle2, Copy, FileUp, X } from 'lucide-react-native';
+import { AlertCircle, Check, Copy, FileUp, X } from 'lucide-react-native';
 import { useState } from 'react';
 import { ActivityIndicator, FlatList, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Button } from '@/components/ui/Button';
 import { IconButton } from '@/components/ui/IconButton';
+import { Screen } from '@/components/ui/Screen';
 import { AppText } from '@/components/ui/Text';
-import { SUPPORTED_EXTENSIONS } from '@/services/metadata/format';
+import { EaseOut } from '@/constants/motion';
 import { importComicFile } from '@/features/importer/import-comic';
 import { useAppTheme } from '@/hooks/use-app-theme';
+import { SUPPORTED_EXTENSIONS } from '@/services/metadata/format';
 import { useLibraryStore } from '@/stores/library-store';
 
 type ItemStatus = 'pending' | 'working' | 'success' | 'duplicate' | 'unsupported' | 'error';
@@ -24,6 +27,7 @@ interface ImportItem {
 
 export default function ImportScreen() {
   const { colors } = useAppTheme();
+  const insets = useSafeAreaInsets();
   const refresh = useLibraryStore((s) => s.refresh);
   const [items, setItems] = useState<ImportItem[] | null>(null);
   const [isRunning, setIsRunning] = useState(false);
@@ -32,11 +36,7 @@ export default function ImportScreen() {
     setItems((current) => current?.map((item) => (item.key === key ? { ...item, ...patch } : item)) ?? current);
 
   const pickAndImport = async () => {
-    const result = await DocumentPicker.getDocumentAsync({
-      multiple: true,
-      copyToCacheDirectory: true,
-      type: '*/*',
-    });
+    const result = await DocumentPicker.getDocumentAsync({ multiple: true, copyToCacheDirectory: true, type: '*/*' });
     if (result.canceled || result.assets.length === 0) return;
 
     const initial: ImportItem[] = result.assets.map((asset, index) => ({
@@ -48,28 +48,21 @@ export default function ImportScreen() {
     setIsRunning(true);
 
     // Sequential on purpose — each import can briefly hold a whole archive
-    // in memory (see services/archive/cbz.ts), so running several at once
-    // would multiply that peak rather than overlap cheap I/O.
-    for (let i = 0; i < result.assets.length; i++) {
-      const asset = result.assets[i];
-      const item = initial[i];
+    // in memory, so parallel imports would stack those peaks.
+    for (const [index, item] of initial.entries()) {
       patchItem(item.key, { status: 'working' });
-
-      const outcome = await importComicFile({
-        uri: asset.uri,
-        name: asset.name,
-        size: asset.size ?? 0,
-      });
+      const asset = result.assets[index];
+      const outcome = await importComicFile({ uri: asset.uri, name: asset.name, size: asset.size ?? 0 });
 
       switch (outcome.status) {
         case 'success':
-          patchItem(item.key, { status: 'success', detail: outcome.comic.title });
+          patchItem(item.key, { status: 'success', detail: 'Added to your library' });
           break;
         case 'duplicate':
-          patchItem(item.key, { status: 'duplicate', detail: `Already in your library as "${outcome.existing.title}"` });
+          patchItem(item.key, { status: 'duplicate', detail: `Already in your library as “${outcome.existing.title}”` });
           break;
         case 'unsupported':
-          patchItem(item.key, { status: 'unsupported', detail: `Unsupported file type (.${outcome.filename.split('.').pop()})` });
+          patchItem(item.key, { status: 'unsupported', detail: `.${outcome.filename.split('.').pop()} files aren’t supported` });
           break;
         case 'error':
           patchItem(item.key, { status: 'error', detail: outcome.message });
@@ -81,92 +74,114 @@ export default function ImportScreen() {
     await refresh();
   };
 
-  const handleDone = () => {
-    router.back();
-  };
+  const done = items?.filter((i) => i.status === 'success').length ?? 0;
+  const finished = items?.filter((i) => i.status !== 'pending' && i.status !== 'working').length ?? 0;
 
   return (
-    <View className="flex-1 bg-base">
-      <SafeAreaView className="flex-1">
-        <View className="flex-row justify-end px-5 pt-2">
-          <IconButton icon={X} variant="surface" onPress={() => router.back()} />
-        </View>
+    <Screen edges={['top']}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingTop: 8, paddingBottom: 8 }}>
+        <AppText variant="headline" className="text-ink" style={{ flex: 1 }}>
+          {items ? (isRunning ? 'Importing…' : 'Import complete') : 'Import'}
+        </AppText>
+        <IconButton icon={X} size={36} accessibilityLabel="Close" onPress={() => router.back()} />
+      </View>
 
-        {!items ? (
-          <View className="flex-1 items-center justify-center gap-5 px-10">
-            <View className="h-16 w-16 items-center justify-center rounded-full bg-elevated">
-              <FileUp size={26} color={colors.inkDim} strokeWidth={1.5} />
-            </View>
-            <View className="gap-2">
-              <AppText weight="semibold" className="text-center text-[18px] text-ink">
-                Import your comics
-              </AppText>
-              <AppText className="text-center text-[14px] leading-5 text-ink-dim">
-                Pick CBZ, CBR, or PDF files from your device. Zlash copies them into your private
-                library — your originals are never modified.
-              </AppText>
-            </View>
-            <View className="mt-2">
-              <Button label="Choose files" icon={FileUp} onPress={pickAndImport} />
-            </View>
-            <AppText className="text-center text-[12px] text-ink-faint">
-              Supports .{SUPPORTED_EXTENSIONS.join(', .')}
-            </AppText>
+      {!items ? (
+        <Animated.View
+          entering={FadeIn.duration(260).easing(EaseOut)}
+          style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 32, paddingBottom: 80 }}>
+          <View
+            style={{
+              width: 72,
+              height: 72,
+              borderRadius: 22,
+              alignItems: 'center',
+              justifyContent: 'center',
+              backgroundColor: colors.accentSoft,
+            }}>
+            <FileUp size={30} color={colors.accent} strokeWidth={1.75} />
           </View>
-        ) : (
-          <>
-            <View className="px-5 pb-2 pt-1">
-              <AppText weight="bold" className="text-[22px] tracking-tight text-ink">
-                Importing
-              </AppText>
-            </View>
-            <FlatList
-              data={items}
-              keyExtractor={(item) => item.key}
-              contentContainerStyle={{ paddingHorizontal: 20, paddingVertical: 8, gap: 2 }}
-              renderItem={({ item }) => <ImportRow item={item} />}
-            />
-            <View className="px-5 pb-6 pt-2">
-              <Button label="Done" onPress={handleDone} disabled={isRunning} />
-            </View>
-          </>
-        )}
-      </SafeAreaView>
-    </View>
+          <AppText variant="title" className="text-ink" style={{ marginTop: 20, textAlign: 'center' }}>
+            Import your comics
+          </AppText>
+          <AppText variant="callout" className="text-ink-dim" style={{ marginTop: 8, textAlign: 'center', maxWidth: 300 }}>
+            Pick files from your device. Zlash copies them into your private library and never touches the originals.
+          </AppText>
+          <View style={{ marginTop: 28 }}>
+            <Button label="Choose files" icon={FileUp} variant="accent" size="lg" onPress={pickAndImport} />
+          </View>
+          <AppText variant="caption" className="text-ink-faint" style={{ marginTop: 14 }}>
+            {SUPPORTED_EXTENSIONS.map((e) => e.toUpperCase()).join(' · ')}
+          </AppText>
+        </Animated.View>
+      ) : (
+        <>
+          <AppText variant="footnote" className="text-ink-dim" style={{ paddingHorizontal: 20, marginBottom: 8 }} tabular>
+            {finished} of {items.length} processed · {done} added
+          </AppText>
+          <FlatList
+            data={items}
+            keyExtractor={(item) => item.key}
+            contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 16, gap: 8 }}
+            renderItem={({ item, index }) => (
+              <Animated.View entering={FadeInDown.delay(Math.min(index, 8) * 30).duration(240).easing(EaseOut)}>
+                <ImportRow item={item} />
+              </Animated.View>
+            )}
+          />
+          <View style={{ paddingHorizontal: 20, paddingTop: 8, paddingBottom: insets.bottom + 16 }}>
+            <Button label={isRunning ? 'Importing…' : 'Done'} size="lg" block disabled={isRunning} onPress={() => router.back()} />
+          </View>
+        </>
+      )}
+    </Screen>
   );
 }
 
 function ImportRow({ item }: { item: ImportItem }) {
   const { colors } = useAppTheme();
-
   return (
-    <View className="flex-row items-center gap-3 border-b border-line py-3">
-      <StatusIcon status={item.status} color={colors.inkDim} accent={colors.accent} />
-      <View className="flex-1">
-        <AppText weight="medium" numberOfLines={1} className="text-[14px] text-ink">
+    <View
+      style={{
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
+        padding: 14,
+        borderRadius: 16,
+        backgroundColor: colors.surface,
+      }}>
+      <StatusIcon status={item.status} />
+      <View style={{ flex: 1, minWidth: 0 }}>
+        <AppText variant="callout" weight="medium" numberOfLines={1} className="text-ink">
           {item.name}
         </AppText>
-        {item.detail ? (
-          <AppText numberOfLines={2} className="mt-0.5 text-[12px] text-ink-dim">
-            {item.detail}
-          </AppText>
-        ) : null}
+        <AppText variant="caption" numberOfLines={2} className="text-ink-dim" style={{ marginTop: 2 }}>
+          {item.detail ?? (item.status === 'working' ? 'Copying and reading pages…' : 'Waiting')}
+        </AppText>
       </View>
     </View>
   );
 }
 
-function StatusIcon({ status, color, accent }: { status: ItemStatus; color: string; accent: string }) {
+function StatusIcon({ status }: { status: ItemStatus }) {
+  const { colors } = useAppTheme();
+  const circle = (bg: string, child: React.ReactNode) => (
+    <View style={{ width: 28, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center', backgroundColor: bg }}>
+      {child}
+    </View>
+  );
+
   switch (status) {
     case 'pending':
+      return circle(colors.elevated, null);
     case 'working':
-      return <ActivityIndicator size="small" color={color} />;
+      return circle(colors.elevated, <ActivityIndicator size="small" color={colors.inkDim} />);
     case 'success':
-      return <CheckCircle2 size={18} color={accent} />;
+      return circle(colors.accentSoft, <Check size={15} color={colors.accent} strokeWidth={3} />);
     case 'duplicate':
-      return <Copy size={18} color={color} />;
+      return circle(colors.elevated, <Copy size={14} color={colors.inkDim} />);
     case 'unsupported':
     case 'error':
-      return <AlertCircle size={18} color={accent} />;
+      return circle('rgba(239, 68, 68, 0.12)', <AlertCircle size={15} color="#ef4444" />);
   }
 }

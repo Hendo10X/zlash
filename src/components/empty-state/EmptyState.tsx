@@ -1,8 +1,10 @@
 import type { LucideIcon } from 'lucide-react-native';
 import { View } from 'react-native';
+import Animated, { FadeIn } from 'react-native-reanimated';
 
 import { Button } from '@/components/ui/Button';
 import { AppText } from '@/components/ui/Text';
+import { EaseOut } from '@/constants/motion';
 import { useAppTheme } from '@/hooks/use-app-theme';
 
 interface EmptyStateProps {
@@ -17,21 +19,32 @@ export function EmptyState({ icon: Icon, title, message, actionLabel, onAction }
   const { colors } = useAppTheme();
 
   return (
-    <View className="flex-1 items-center justify-center gap-4 px-10 py-20">
-      <View className="h-14 w-14 items-center justify-center rounded-full bg-elevated">
-        <Icon size={24} color={colors.inkDim} strokeWidth={1.5} />
+    <Animated.View
+      entering={FadeIn.duration(260).easing(EaseOut)}
+      style={{ flexGrow: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 40, paddingVertical: 64 }}>
+      <View
+        style={{
+          width: 56,
+          height: 56,
+          borderRadius: 18,
+          alignItems: 'center',
+          justifyContent: 'center',
+          backgroundColor: colors.surface,
+          marginBottom: 18,
+        }}>
+        <Icon size={24} color={colors.inkDim} strokeWidth={1.75} />
       </View>
-      <View className="gap-1.5">
-        <AppText weight="semibold" className="text-center text-[17px] text-ink">
-          {title}
-        </AppText>
-        <AppText className="text-center text-[14px] leading-5 text-ink-dim">{message}</AppText>
-      </View>
+      <AppText variant="headline" className="text-ink" style={{ textAlign: 'center' }}>
+        {title}
+      </AppText>
+      <AppText variant="callout" className="text-ink-dim" style={{ textAlign: 'center', marginTop: 6, maxWidth: 300 }}>
+        {message}
+      </AppText>
       {actionLabel && onAction ? (
-        <View className="mt-2">
-          <Button label={actionLabel} onPress={onAction} />
+        <View style={{ marginTop: 22 }}>
+          <Button label={actionLabel} variant="accent" onPress={onAction} />
         </View>
       ) : null}
-    </View>
+    </Animated.View>
   );
 }

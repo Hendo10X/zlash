@@ -1,98 +1,117 @@
 import type { BottomTabBarProps } from 'expo-router/js-tabs';
-import { History, Library, Settings as SettingsIcon } from 'lucide-react-native';
-import { useEffect, useState } from 'react';
+import * as Haptics from 'expo-haptics';
+import { Compass, History, Library, type LucideIcon, Settings as SettingsIcon } from 'lucide-react-native';
+import { useEffect, useRef, useState } from 'react';
 import { Pressable, View } from 'react-native';
-import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
+import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AppText } from '@/components/ui/Text';
+import { EaseOut } from '@/constants/motion';
+import { TabBarMetrics } from '@/constants/theme';
 import { useAppTheme } from '@/hooks/use-app-theme';
-import { usePressScale } from '@/hooks/use-press-scale';
 
-const ICONS = {
-  index: Library,
-  history: History,
-  settings: SettingsIcon,
-} as const;
-
-const LABELS: Record<string, string> = {
-  index: 'Library',
-  history: 'History',
-  settings: 'Settings',
+const TABS: Record<string, { label: string; icon: LucideIcon }> = {
+  index: { label: 'Library', icon: Library },
+  browse: { label: 'Browse', icon: Compass },
+  history: { label: 'History', icon: History },
+  settings: { label: 'Settings', icon: SettingsIcon },
 };
 
+const INSET = 6;
+
+/**
+ * Floating pill tab bar. The active-tab highlight glides between tabs with a
+ * short ease-out (no spring overshoot, no per-item scaling) — the old spring
+ * plus press-scale combination was what made switching feel wobbly.
+ */
 export function TabBar({ state, navigateToTab }: BottomTabBarProps) {
   const insets = useSafeAreaInsets();
+  const { colors, scheme } = useAppTheme();
   const [barWidth, setBarWidth] = useState(0);
-  const tabWidth = barWidth / Math.max(state.routes.length, 1);
+  const tabWidth = (barWidth - INSET * 2) / Math.max(state.routes.length, 1);
 
-  const indicatorX = useSharedValue(0);
+  const x = useSharedValue(0);
+  const positioned = useRef(false);
+
   useEffect(() => {
-    indicatorX.value = withSpring(state.index * tabWidth, {
-      damping: 20,
-      stiffness: 220,
-    });
-  }, [state.index, tabWidth, indicatorX]);
+    if (tabWidth <= 0) return;
+    const target = INSET + state.index * tabWidth;
+    if (!positioned.current) {
+      // First layout: jump into place instead of sliding in from the left.
+      x.value = target;
+      positioned.current = true;
+    } else {
+      x.value = withTiming(target, { duration: 260, easing: EaseOut });
+    }
+  }, [state.index, tabWidth, x]);
 
-  const indicatorStyle = useAnimatedStyle(() => ({
-    transform: [{ translateX: indicatorX.value }],
-    width: tabWidth,
-  }));
+  const indicatorStyle = useAnimatedStyle(() => ({ transform: [{ translateX: x.value }] }));
 
   return (
     <View
-      className="absolute inset-x-4 flex-row items-center rounded-full border border-line bg-surface"
-      style={{ bottom: insets.bottom + 10, height: 62 }}
-      onLayout={(e) => setBarWidth(e.nativeEvent.layout.width)}>
-      {barWidth > 0 ? (
+      onLayout={(e) => setBarWidth(e.nativeEvent.layout.width)}
+      style={{
+        position: 'absolute',
+        left: 16,
+        right: 16,
+        bottom: insets.bottom + TabBarMetrics.bottomGap,
+        height: TabBarMetrics.height,
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: INSET,
+        borderRadius: TabBarMetrics.height / 2,
+        backgroundColor: colors.surface,
+        borderWidth: 1,
+        borderColor: colors.line,
+        shadowColor: '#000',
+        shadowOpacity: scheme === 'dark' ? 0.4 : 0.08,
+        shadowRadius: 20,
+        shadowOffset: { width: 0, height: 8 },
+        elevation: 12,
+      }}>
+      {tabWidth > 0 ? (
         <Animated.View
           pointerEvents="none"
-          style={[indicatorStyle, { position: 'absolute', top: 7, bottom: 7 }]}
-          className="rounded-full bg-elevated"
+          style={[
+            {
+              position: 'absolute',
+              left: 0,
+              top: INSET,
+              bottom: INSET,
+              width: tabWidth,
+              borderRadius: (TabBarMetrics.height - INSET * 2) / 2,
+              backgroundColor: colors.elevated,
+            },
+            indicatorStyle,
+          ]}
         />
       ) : null}
 
-      {state.routes.map((route, index) => (
-        <TabBarItem
-          key={route.key}
-          routeKey={route.key}
-          routeName={route.name}
-          isFocused={state.index === index}
-          onPress={() => navigateToTab(route.key)}
-        />
-      ))}
+      {state.routes.map((route, index) => {
+        const tab = TABS[route.name] ?? { label: route.name, icon: Library };
+        const focused = state.index === index;
+        const Icon = tab.icon;
+        const color = focused ? colors.ink : colors.inkFaint;
+
+        return (
+          <Pressable
+            key={route.key}
+            accessibilityRole="tab"
+            accessibilityState={{ selected: focused }}
+            accessibilityLabel={tab.label}
+            onPress={() => {
+              if (!focused) Haptics.selectionAsync().catch(() => {});
+              navigateToTab(route.key);
+            }}
+            style={{ flex: 1, height: '100%', alignItems: 'center', justifyContent: 'center', gap: 3 }}>
+            <Icon size={20} strokeWidth={focused ? 2.25 : 1.9} color={focused ? colors.accent : color} />
+            <AppText variant="micro" weight={focused ? 'semibold' : 'medium'} style={{ color }}>
+              {tab.label}
+            </AppText>
+          </Pressable>
+        );
+      })}
     </View>
-  );
-}
-
-function TabBarItem({
-  routeName,
-  isFocused,
-  onPress,
-}: {
-  routeKey: string;
-  routeName: string;
-  isFocused: boolean;
-  onPress: () => void;
-}) {
-  const { colors } = useAppTheme();
-  const Icon = ICONS[routeName as keyof typeof ICONS] ?? Library;
-  const { style, onPressIn, onPressOut } = usePressScale(0.9);
-
-  return (
-    <Animated.View style={[{ flex: 1 }, style]}>
-      <Pressable
-        className="items-center justify-center gap-1 py-2"
-        onPressIn={onPressIn}
-        onPressOut={onPressOut}
-        onPress={onPress}>
-        <Icon size={20} strokeWidth={isFocused ? 2.25 : 1.75} color={isFocused ? colors.ink : colors.inkFaint} />
-        <AppText
-          weight={isFocused ? 'semibold' : 'medium'}
-          style={{ fontSize: 11, color: isFocused ? colors.ink : colors.inkFaint }}>
-          {LABELS[routeName] ?? routeName}
-        </AppText>
-      </Pressable>
-    </Animated.View>
   );
 }

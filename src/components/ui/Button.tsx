@@ -12,44 +12,57 @@ interface ButtonProps {
   label: string;
   onPress?: () => void;
   icon?: LucideIcon;
-  variant?: 'primary' | 'secondary' | 'ghost';
+  variant?: 'primary' | 'accent' | 'secondary' | 'ghost' | 'destructive';
+  size?: 'md' | 'lg';
   disabled?: boolean;
+  /** Stretch to the parent's width. */
+  block?: boolean;
 }
-
-const variantClasses: Record<NonNullable<ButtonProps['variant']>, string> = {
-  primary: 'bg-ink',
-  secondary: 'bg-elevated',
-  ghost: 'bg-transparent',
-};
-
-const variantTextClasses: Record<NonNullable<ButtonProps['variant']>, string> = {
-  primary: 'text-base',
-  secondary: 'text-ink',
-  ghost: 'text-ink',
-};
 
 export function Button({
   label,
   onPress,
   icon: Icon,
   variant = 'primary',
+  size = 'md',
   disabled = false,
+  block = false,
 }: ButtonProps) {
   const { colors } = useAppTheme();
   const { style, onPressIn, onPressOut } = usePressScale(0.97);
 
-  const iconColor = variant === 'primary' ? colors.base : colors.ink;
+  const palette = {
+    primary: { bg: colors.ink, fg: colors.base },
+    accent: { bg: colors.accent, fg: colors.accentInk },
+    secondary: { bg: colors.elevated, fg: colors.ink },
+    ghost: { bg: 'transparent', fg: colors.ink },
+    destructive: { bg: 'rgba(239, 68, 68, 0.12)', fg: '#ef4444' },
+  }[variant];
 
   return (
     <AnimatedPressable
       disabled={disabled}
-      style={style}
       onPressIn={onPressIn}
       onPressOut={onPressOut}
       onPress={onPress}
-      className={`flex-row items-center justify-center gap-2 rounded-full px-5 py-3 ${variantClasses[variant]} ${disabled ? 'opacity-40' : ''}`}>
-      {Icon ? <Icon size={16} color={iconColor} /> : null}
-      <AppText weight="semibold" className={`text-[14px] ${variantTextClasses[variant]}`}>
+      accessibilityRole="button"
+      style={[
+        style,
+        {
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: 8,
+          borderRadius: 999,
+          paddingHorizontal: size === 'lg' ? 24 : 18,
+          height: size === 'lg' ? 52 : 44,
+          backgroundColor: palette.bg,
+          opacity: disabled ? 0.4 : 1,
+          alignSelf: block ? 'stretch' : 'auto',
+        },
+      ]}>
+      {Icon ? <Icon size={size === 'lg' ? 18 : 16} color={palette.fg} strokeWidth={2.25} /> : null}
+      <AppText variant={size === 'lg' ? 'body' : 'callout'} weight="semibold" style={{ color: palette.fg }}>
         {label}
       </AppText>
     </AnimatedPressable>
