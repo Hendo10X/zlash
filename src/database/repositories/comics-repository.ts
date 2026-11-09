@@ -27,6 +27,7 @@ function rowToComic(row: ComicRow): Comic {
     issueNumber: row.issue_number ?? undefined,
     originalFilename: row.original_filename,
     filePath: row.file_path,
+    fileHash: row.file_hash,
     coverPath: row.cover_path ?? undefined,
     format: row.format as Comic['format'],
     fileSize: row.file_size,

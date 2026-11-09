@@ -1,10 +1,8 @@
 import type { LucideIcon } from 'lucide-react-native';
 import { View } from 'react-native';
-import Animated, { FadeIn } from 'react-native-reanimated';
 
 import { Button } from '@/components/ui/Button';
 import { AppText } from '@/components/ui/Text';
-import { EaseOut } from '@/constants/motion';
 import { useAppTheme } from '@/hooks/use-app-theme';
 
 interface EmptyStateProps {
@@ -19,8 +17,7 @@ export function EmptyState({ icon: Icon, title, message, actionLabel, onAction }
   const { colors } = useAppTheme();
 
   return (
-    <Animated.View
-      entering={FadeIn.duration(260).easing(EaseOut)}
+    <View
       style={{ flexGrow: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 40, paddingVertical: 64 }}>
       <View
         style={{
@@ -45,6 +42,6 @@ export function EmptyState({ icon: Icon, title, message, actionLabel, onAction }
           <Button label={actionLabel} variant="accent" onPress={onAction} />
         </View>
       ) : null}
-    </Animated.View>
+    </View>
   );
 }

@@ -64,3 +64,19 @@ export async function removeComicFromCollection(collectionId: string, comicId: s
     comicId
   );
 }
+
+export async function renameCollection(id: string, name: string) {
+  const db = await getDatabase();
+  await db.runAsync('UPDATE collections SET name = ?, updated_at = ? WHERE id = ?;', name, Date.now(), id);
+}
+
+/** Deletes the collection only — the comics in it stay in the library. */
+export async function deleteCollection(id: string) {
+  const db = await getDatabase();
+  await db.runAsync('DELETE FROM collections WHERE id = ?;', id);
+}
+
+export async function touchCollection(id: string) {
+  const db = await getDatabase();
+  await db.runAsync('UPDATE collections SET updated_at = ? WHERE id = ?;', Date.now(), id);
+}

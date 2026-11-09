@@ -8,6 +8,7 @@ export interface Comic {
   issueNumber?: string;
   originalFilename: string;
   filePath: string;
+  fileHash: string;
   coverPath?: string;
   format: 'cbz' | 'cbr' | 'pdf';
   fileSize: number;

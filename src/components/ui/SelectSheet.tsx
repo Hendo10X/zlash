@@ -58,7 +58,7 @@ export function SelectSheet<T extends string>({
                 paddingHorizontal: 14,
                 paddingVertical: 10,
                 borderRadius: 16,
-                backgroundColor: selected ? colors.accentSoft : pressed ? colors.elevated : 'transparent',
+                backgroundColor: selected ? colors.accentSoft : pressed ? colors.line : 'transparent',
               })}>
               {Icon ? <Icon size={18} color={selected ? colors.accent : colors.inkDim} strokeWidth={2} /> : null}
               <View style={{ flex: 1 }}>

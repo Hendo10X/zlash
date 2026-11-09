@@ -1,7 +1,6 @@
-import { router } from 'expo-router';
-import { ArrowDownUp, BookOpen, ChevronDown, Grid2x2, List, Plus, Search } from 'lucide-react-native';
+import { ArrowDownUp, BookOpen, ChevronDown, FolderPlus, Grid2x2, List, Plus, Search } from 'lucide-react-native';
 import { useMemo, useState } from 'react';
-import { FlatList, Pressable, useWindowDimensions, View } from 'react-native';
+import { FlatList, Pressable, ScrollView, useWindowDimensions, View } from 'react-native';
 
 import { ComicGridItem } from '@/components/comic-cover/ComicGridItem';
 import { ComicListItem } from '@/components/comic-cover/ComicListItem';
@@ -12,6 +11,8 @@ import { SearchField } from '@/components/ui/SearchField';
 import { SectionHeader } from '@/components/ui/SectionHeader';
 import { type SelectOption, SelectSheet } from '@/components/ui/SelectSheet';
 import { AppText } from '@/components/ui/Text';
+import { CollectionActionsSheet, CollectionNameSheet } from '@/features/collections/CollectionSheets';
+import { ImportSheet } from '@/features/importer/ImportSheet';
 import {
   filterComics,
   formatPageCount,
@@ -55,20 +56,30 @@ export default function LibraryScreen() {
 
   const [searchOpen, setSearchOpen] = useState(false);
   const [sortOpen, setSortOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
+  const [newCollectionOpen, setNewCollectionOpen] = useState(false);
+  const [actionsFor, setActionsFor] = useState<string | null>(null);
+  const collections = useLibraryStore((s) => s.collections);
+  const activeCollectionId = useLibraryStore((s) => s.activeCollectionId);
+  const setActiveCollection = useLibraryStore((s) => s.setActiveCollection);
+  const activeCollection = collections.find((c) => c.id === activeCollectionId);
   const { width } = useWindowDimensions();
   const columns = columnCount(width);
   const cellWidth = (width - GUTTER * 2 - GAP * (columns - 1)) / columns;
   const tabBarTop = useTabBarTop();
   const bottomPadding = useTabBarClearance(FAB_SIZE + 32);
 
-  const visibleComics = useMemo(() => sortComics(filterComics(comics, searchQuery), sortKey), [comics, searchQuery, sortKey]);
+  const visibleComics = useMemo(() => {
+    const inCollection = activeCollection ? comics.filter((c) => activeCollection.comicIds.includes(c.id)) : comics;
+    return sortComics(filterComics(inCollection, searchQuery), sortKey);
+  }, [comics, searchQuery, sortKey, activeCollection]);
   const currentlyReading = useMemo(() => getCurrentlyReading(comics), [comics]);
   const isGrid = viewMode === 'grid';
   const hasComics = comics.length > 0;
 
   const header = (
     <View style={{ paddingBottom: 12 }}>
-      {currentlyReading.length > 0 && !searchQuery ? (
+      {currentlyReading.length > 0 && !searchQuery && !activeCollection ? (
         <View style={{ marginBottom: 24 }}>
           <SectionHeader title="Continue reading" style={{ paddingHorizontal: GUTTER, marginBottom: 10 }} />
           <FlatList
@@ -87,6 +98,27 @@ export default function LibraryScreen() {
             )}
           />
         </View>
+      ) : null}
+
+      {hasComics ? (
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={{ paddingHorizontal: GUTTER, gap: 8 }}
+          style={{ marginBottom: 14, flexGrow: 0 }}>
+          <Chip label="All" selected={!activeCollection} onPress={() => setActiveCollection(null)} />
+          {collections.map((collection) => (
+            <Chip
+              key={collection.id}
+              label={collection.name}
+              count={collection.comicIds.length}
+              selected={collection.id === activeCollectionId}
+              onPress={() => setActiveCollection(collection.id === activeCollectionId ? null : collection.id)}
+              onLongPress={() => setActionsFor(collection.id)}
+            />
+          ))}
+          <Chip label={collections.length === 0 ? 'New collection' : 'New'} icon onPress={() => setNewCollectionOpen(true)} />
+        </ScrollView>
       ) : null}
 
       {hasComics ? (
@@ -153,13 +185,17 @@ export default function LibraryScreen() {
         ListEmptyComponent={
           isLoading ? undefined : (
             <EmptyState
-              icon={searchQuery ? Search : BookOpen}
-              title={searchQuery ? 'No matches' : 'Your library is empty'}
+              icon={searchQuery ? Search : activeCollection ? FolderPlus : BookOpen}
+              title={searchQuery ? 'No matches' : activeCollection ? 'This collection is empty' : 'Your library is empty'}
               message={
-                searchQuery ? 'Try a different title or series name.' : 'Import CBZ, CBR or PDF comics from your device to start reading.'
+                searchQuery
+                  ? 'Try a different title or series name.'
+                  : activeCollection
+                    ? 'Open a comic and tap Collection to add it here.'
+                    : 'Import CBZ, CBR or PDF comics from your device to start reading.'
               }
-              actionLabel={searchQuery ? undefined : 'Import comics'}
-              onAction={searchQuery ? undefined : () => router.push('/import')}
+              actionLabel={searchQuery || activeCollection ? undefined : 'Import comics'}
+              onAction={searchQuery || activeCollection ? undefined : () => setImportOpen(true)}
             />
           )
         }
@@ -192,7 +228,7 @@ export default function LibraryScreen() {
           icon={Plus}
           variant="accent"
           accessibilityLabel="Import comics"
-          onPress={() => router.push('/import')}
+          onPress={() => setImportOpen(true)}
           // Sits a clear 16pt above the floating tab bar, never touching it.
           style={{
             position: 'absolute',
@@ -215,6 +251,66 @@ export default function LibraryScreen() {
         value={sortKey}
         onChange={setSortKey}
       />
+      <ImportSheet visible={importOpen} onClose={() => setImportOpen(false)} />
+      <CollectionNameSheet
+        visible={newCollectionOpen}
+        onClose={() => setNewCollectionOpen(false)}
+        onCreated={(id) => setActiveCollection(id)}
+      />
+      <CollectionActionsSheet
+        visible={actionsFor !== null}
+        onClose={() => setActionsFor(null)}
+        collection={collections.find((c) => c.id === actionsFor)}
+      />
     </Screen>
+  );
+}
+
+function Chip({
+  label,
+  count,
+  selected = false,
+  icon = false,
+  onPress,
+  onLongPress,
+}: {
+  label: string;
+  count?: number;
+  selected?: boolean;
+  icon?: boolean;
+  onPress: () => void;
+  onLongPress?: () => void;
+}) {
+  const { colors } = useAppTheme();
+  return (
+    <Pressable
+      onPress={onPress}
+      onLongPress={onLongPress}
+      delayLongPress={350}
+      accessibilityRole="button"
+      accessibilityState={{ selected }}
+      style={({ pressed }) => ({
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        height: 34,
+        paddingHorizontal: 14,
+        borderRadius: 17,
+        backgroundColor: selected ? colors.accent : pressed ? colors.elevated : colors.surface,
+      })}>
+      {icon ? <Plus size={14} color={colors.accent} strokeWidth={2.5} /> : null}
+      <AppText
+        variant="footnote"
+        weight={selected ? 'semibold' : 'medium'}
+        numberOfLines={1}
+        style={{ color: selected ? colors.accentInk : icon ? colors.accent : colors.ink, maxWidth: 160 }}>
+        {label}
+      </AppText>
+      {count !== undefined ? (
+        <AppText variant="caption" tabular style={{ color: selected ? colors.accentInk : colors.inkFaint }}>
+          {count}
+        </AppText>
+      ) : null}
+    </Pressable>
   );
 }
