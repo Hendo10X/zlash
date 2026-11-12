@@ -1,0 +1,135 @@
+---
+/*
+  The big ZLASH. The real text sets the size and stays for screen readers;
+  a canvas draws it again as characters you can push around.
+*/
+interface Props {
+  text: string;
+}
+
+const { text } = Astro.props;
+const letters = text.toUpperCase().split('');
+---
+
+<h1 class="wordmark" data-wordmark data-state="loading" aria-label={text}>
+  {letters.map((letter) => <span aria-hidden="true" data-letter>{letter}</span>)}
+  <canvas aria-hidden="true"></canvas>
+</h1>
+
+<style>
+  .wordmark {
+    --pad: 64px;
+    position: relative;
+    display: flex;
+    justify-content: space-between;
+    font-size: clamp(5.5rem, 26vw, 20rem);
+    font-weight: 800;
+    line-height: 0.8;
+    letter-spacing: 0;
+    touch-action: pan-y;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  span { display: block; }
+
+  canvas {
+    position: absolute;
+    top: calc(var(--pad) * -1);
+    left: calc(var(--pad) * -1);
+    pointer-events: none;
+  }
+
+  /* With scripting on, the text waits for the canvas instead of flashing in first. */
+  @media (scripting: enabled) {
+    .wordmark[data-state='loading'] span { opacity: 0; }
+    .wordmark[data-state='ascii'] span { color: transparent; }
+  }
+
+  .wordmark[data-state='text'] canvas { display: none; }
+</style>
+
+<script>
+  import { AsciiField, type FieldLayout } from './ascii-field';
+
+  const PAD = 64;
+
+  function measure(root: HTMLElement): FieldLayout {
+    const style = getComputedStyle(root);
+    const font = `${style.fontWeight} ${style.fontSize} ${style.fontFamily}`;
+    const lineHeight = parseFloat(style.lineHeight);
+
+    const probe = document.createElement('canvas').getContext('2d')!;
+    probe.font = font;
+    const metrics = probe.measureText('ZLASH');
+    const ascent = metrics.fontBoundingBoxAscent;
+    const descent = metrics.fontBoundingBoxDescent;
+
+    const box = root.getBoundingClientRect();
+    const letters = [...root.querySelectorAll<HTMLElement>('[data-letter]')].map((span) => {
+      const rect = span.getBoundingClientRect();
+      return {
+        letter: span.textContent ?? '',
+        x: rect.left - box.left + PAD,
+        baseline: rect.top - box.top + PAD + (lineHeight - ascent - descent) / 2 + ascent,
+      };
+    });
+
+    return {
+      width: box.width + PAD * 2,
+      height: box.height + PAD * 2,
+      font,
+      letters,
+      cell: Math.min(12, Math.max(6, Math.round(box.width / 80))),
+    };
+  }
+
+  async function mount(root: HTMLElement) {
+    const canvas = root.querySelector('canvas')!;
+    const style = getComputedStyle(root);
+    await document.fonts.load(`${style.fontWeight} 100px ${style.fontFamily}`);
+
+    const tokens = getComputedStyle(document.documentElement);
+    const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const field = new AsciiField(
+      canvas,
+      { ink: tokens.getPropertyValue('--paper').trim(), hot: tokens.getPropertyValue('--panel-green').trim() },
+      reducedMotion,
+    );
+
+    const apply = (scatter: boolean) => {
+      const layout = measure(root);
+      canvas.style.width = `${layout.width}px`;
+      canvas.style.height = `${layout.height}px`;
+      field.setLayout(layout, scatter);
+    };
+
+    apply(true);
+    root.dataset.state = 'ascii';
+
+    let width = root.clientWidth;
+    new ResizeObserver(() => {
+      if (root.clientWidth === width) return;
+      width = root.clientWidth;
+      apply(false);
+    }).observe(root);
+
+    const local = (e: PointerEvent) => {
+      const rect = root.getBoundingClientRect();
+      return { x: e.clientX - rect.left + PAD, y: e.clientY - rect.top + PAD };
+    };
+    root.addEventListener('pointermove', (e) => field.pointerAt(local(e)));
+    root.addEventListener('pointerleave', () => field.pointerAt(null));
+    root.addEventListener('pointercancel', () => field.pointerAt(null));
+    root.addEventListener('pointerdown', (e) => {
+      const p = local(e);
+      field.burst(p.x, p.y);
+    });
+  }
+
+  for (const root of document.querySelectorAll<HTMLElement>('[data-wordmark]')) {
+    mount(root).catch(() => {
+      root.dataset.state = 'text';
+    });
+  }
+</script>

@@ -1,0 +1,77 @@
+---
+import DownloadLink from '../download/DownloadLink.astro';
+import { site } from '../site';
+---
+
+<div class="edge-blur" aria-hidden="true"><div></div><div></div><div></div><div></div></div>
+
+<header class="nav">
+  <nav class="links">
+    {site.sourceHref && <a href={site.sourceHref}>Source</a>}
+    <DownloadLink look="text" />
+  </nav>
+</header>
+
+<style>
+  .nav {
+    position: fixed;
+    inset: 0 0 auto 0;
+    z-index: 10;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    max-width: calc(var(--column) + var(--gutter) * 2);
+    margin: 0 auto;
+    padding: 12px var(--gutter);
+    font-size: 0.9375rem;
+  }
+
+  .links {
+    display: flex;
+    gap: 24px;
+    color: var(--pencil);
+  }
+
+  .links a {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+  }
+
+  @media (hover: hover) {
+    .links a:hover { color: var(--paper); }
+  }
+
+  /* Progressive blur: content softens as it slides under the top edge. */
+  .edge-blur {
+    position: fixed;
+    inset: 0 0 auto 0;
+    z-index: 9;
+    height: 96px;
+    pointer-events: none;
+    background: linear-gradient(to bottom, var(--night), transparent);
+  }
+
+  .edge-blur > div { position: absolute; inset: 0; }
+
+  .edge-blur > div:nth-child(1) {
+    backdrop-filter: blur(1px);
+    mask: linear-gradient(to top, transparent 0%, #000 25%, #000 50%, transparent 75%);
+  }
+  .edge-blur > div:nth-child(2) {
+    backdrop-filter: blur(3px);
+    mask: linear-gradient(to top, transparent 25%, #000 50%, #000 75%, transparent 100%);
+  }
+  .edge-blur > div:nth-child(3) {
+    backdrop-filter: blur(6px);
+    mask: linear-gradient(to top, transparent 50%, #000 75%, #000 100%);
+  }
+  .edge-blur > div:nth-child(4) {
+    backdrop-filter: blur(12px);
+    mask: linear-gradient(to top, transparent 75%, #000 100%);
+  }
+
+  @media (prefers-reduced-transparency: reduce) {
+    .edge-blur > div { backdrop-filter: none; }
+  }
+</style>

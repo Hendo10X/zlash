@@ -1,0 +1,48 @@
+---
+import Reveal from '../motion/Reveal.astro';
+import { site } from '../site';
+---
+
+<section class="features" aria-label="What Zlash does">
+  <ul>
+    {site.features.map((feature) => (
+      <Reveal as="li">
+        <feature.icon class="icon" size={22} stroke-width={1.75} aria-hidden="true" />
+        <h2>{feature.title}</h2>
+        <p>{feature.body}</p>
+      </Reveal>
+    ))}
+  </ul>
+</section>
+
+<style>
+  .features { margin-top: clamp(120px, 18vw, 200px); }
+
+  ul {
+    display: grid;
+    gap: 48px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  @media (min-width: 900px) {
+    ul { grid-template-columns: repeat(3, 1fr); gap: 40px; }
+  }
+
+  li :global(.icon) {
+    display: block;
+    margin-bottom: 16px;
+    color: var(--panel-green);
+  }
+
+  h2 {
+    font-size: 1.0625rem;
+    margin-bottom: 8px;
+  }
+
+  p {
+    color: var(--pencil);
+    max-width: 36ch;
+  }
+</style>

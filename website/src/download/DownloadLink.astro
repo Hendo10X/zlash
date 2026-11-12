@@ -1,0 +1,63 @@
+---
+/*
+  The one place that knows whether Zlash can be downloaded yet.
+  "button" is the hero call to action, "text" is the quiet nav link.
+*/
+import { site } from '../site';
+
+interface Props {
+  look: 'button' | 'text';
+}
+
+const { look } = Astro.props;
+const { download } = site;
+---
+
+{download.status === 'released' ? (
+  look === 'button' ? (
+    <a class="download button" href={download.href}>Download for Android</a>
+    <span class="version">Version {download.version}</span>
+  ) : (
+    <a class="download text" href={download.href}>Download</a>
+  )
+) : look === 'button' ? (
+  <p class="soon">Coming soon to Android</p>
+) : null}
+
+<style>
+  .download.button {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+    padding: 0 20px;
+    border-radius: 999px;
+    background: var(--panel-green);
+    color: var(--panel-green-ink);
+    font-weight: 600;
+    font-size: 0.9375rem;
+    transition: scale var(--press) var(--ease-out);
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .download.button:active { scale: 0.97; }
+
+  .download.text {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+    color: var(--paper);
+  }
+
+  .version {
+    color: var(--pencil);
+    font-size: 0.9375rem;
+  }
+
+  .soon {
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    color: var(--paper);
+    font-weight: 500;
+  }
+</style>

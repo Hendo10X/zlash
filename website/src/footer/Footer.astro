@@ -1,0 +1,28 @@
+---
+import { site } from '../site';
+
+const year = new Date().getFullYear();
+---
+
+<footer class="footer">
+  <p>{site.name} {year}</p>
+  {site.sourceHref && <a href={site.sourceHref}>Source</a>}
+</footer>
+
+<style>
+  .footer {
+    display: flex;
+    justify-content: space-between;
+    gap: 24px;
+    margin-top: clamp(120px, 18vw, 200px);
+    padding-bottom: 40px;
+    color: var(--pencil);
+    font-size: 0.875rem;
+  }
+
+  a { min-height: 44px; display: inline-flex; align-items: center; }
+
+  @media (hover: hover) {
+    a:hover { color: var(--paper); }
+  }
+</style>

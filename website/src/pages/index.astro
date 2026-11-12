@@ -1,0 +1,41 @@
+---
+import '@fontsource-variable/kumbh-sans';
+import '../theme/theme.css';
+
+import Features from '../features/Features.astro';
+import Footer from '../footer/Footer.astro';
+import Hero from '../hero/Hero.astro';
+import Nav from '../nav/Nav.astro';
+import OpenSource from '../open-source/OpenSource.astro';
+import { site } from '../site';
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#0c0c0c" />
+    <meta name="description" content={site.summary} />
+    <link rel="icon" href="/favicon.png" />
+    <title>{site.name} · Comic reader for Android</title>
+  </head>
+  <body>
+    <Nav />
+    <main class="page">
+      <Hero />
+      <Features />
+      <OpenSource />
+      <Footer />
+    </main>
+  </body>
+</html>
+
+<style>
+  .page {
+    max-width: calc(var(--column) + var(--gutter) * 2);
+    margin: 0 auto;
+    padding: 0 var(--gutter);
+    overflow-x: clip;
+  }
+</style>
